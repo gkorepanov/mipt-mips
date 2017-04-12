@@ -9,6 +9,7 @@
 
 // MIPT_MIPS modules
 #include "perf_sim/mem/cache_tag_array.h"
+#include "common/log.h"
 
 /* The branch prediction unit keeps the fixed amount of entries.
  * Entry contains the information regarding the certain branch ip:
@@ -36,7 +37,7 @@
 /* for the sake of semantics */
 typedef uint64 addr_t;
 
-class BP {
+class BP : protected Log {
 private:
     /* the amount of bits used to store the state,
      * for instance, the bimodal BTB uses only 2 bits.
@@ -61,7 +62,7 @@ private:
     const unsigned short default_pattern;
     const unsigned short pattern_mask;
 
-    class BPEntry {
+    class BPEntry : protected Log {
     private:
         BP& bp;
 
@@ -83,6 +84,7 @@ private:
 
     public:
         BPEntry( BP& bp) :
+            Log( true),
             bp( bp),
             state_table( bp.pattern_mask + 1, bp.default_pattern),
             current_pattern( bp.default_pattern)
@@ -120,7 +122,7 @@ public:
     BP( unsigned int   size_in_entries,
         unsigned int   ways,
         unsigned short prediction_bits = 2,
-        unsigned short prediction_level = 1,
+        unsigned short prediction_level = 0,
         unsigned short branch_ip_size_in_bits = 32);
 
     addr_t getPC( addr_t PC);

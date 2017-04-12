@@ -71,6 +71,11 @@ bool CacheTagArray::read( uint64 addr, unsigned int* way)
 void CacheTagArray::write( uint64 addr, unsigned int* way)
 {
     unsigned int set_num = getSetNum( addr);
+
+    if ( read( addr, way)) // hit
+        return;
+
+    // miss, adding new entry
     unsigned int way_num = lru->update( set_num); // get l.r.u. way
     if ( way != nullptr)
         *way = way_num;

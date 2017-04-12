@@ -1,5 +1,5 @@
 /**
- * log.h - Header of log class 
+ * log.h - Header of log class
  * includes 2 methods to show warrnings and errors
  * @author Pavel Kryukov
  * Copyright 2017 MIPT-MIPS team
@@ -22,7 +22,7 @@ public:
     LogOstream(bool value, std::ostream& _out) : enable(value), stream(_out) { }
 
     friend LogOstream& operator<<(LogOstream&, const Critical&) {
-         exit(-1);
+         exit( EXIT_FAILURE);
     }
 
     LogOstream& operator<<(std::ostream& (*F)(std::ostream&)) {
@@ -36,7 +36,7 @@ public:
         if ( enable) {
             stream << v;
         }
-        
+
         return *this;
     }
 };

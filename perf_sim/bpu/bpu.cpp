@@ -26,8 +26,6 @@ void BP::BPEntry::update( bool is_actually_taken, addr_t target)
         _target = target;
     }
 
-    current_pattern = ( ( current_pattern << 1) & bp.pattern_mask) + ( is_actually_taken ? 1 : 0);
-
     unsigned short& state = state_table[ current_pattern];
     state += ( is_actually_taken ? 1 : -1);
 
@@ -37,6 +35,8 @@ void BP::BPEntry::update( bool is_actually_taken, addr_t target)
     if ( state & ( bp.mean_state << 1))
         state = ( ~state) & ( ( bp.mean_state << 1) - 1);
 
+    /* updating pattern */
+    current_pattern = ( ( current_pattern << 1) + is_actually_taken) & bp.pattern_mask;
     return;
 }
 
@@ -46,6 +46,7 @@ BP::BP( unsigned int   size_in_entries,
         unsigned short prediction_bits,
         unsigned short prediction_level,
         unsigned short branch_ip_size_in_bits) :
+    Log( true),
     prediction_bits( prediction_bits),
     mean_state( 1ull << ( prediction_bits - 1)),
     default_state( mean_state - 1),
