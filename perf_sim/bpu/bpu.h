@@ -56,21 +56,42 @@ private:
      */
     const unsigned short default_state;
 
+    /* level of prediction of adaptive predictor */
+    const unsigned short prediction_level;
+    const unsigned short default_pattern;
+    const unsigned short pattern_mask;
+
     class BPEntry {
     private:
         BP& bp;
-        unsigned short state;
+
+        /* The index is a pattern, and the value is prediction state,
+         * so, e.g. for two-level adaptive predictor the table might be like:
+         * ---------
+         * 00 -- NT
+         * 01 -- T
+         * 10 -- WNT
+         * 11 -- WNT
+         * ---------
+         */
+        std::vector<unsigned short> state_table;
+
         addr_t _target;
+        unsigned short current_pattern;
+
+        void reset();
+
     public:
         BPEntry( BP& bp) :
             bp( bp),
-            state( bp.default_state)
+            state_table( bp.pattern_mask + 1, bp.default_pattern),
+            current_pattern( bp.default_pattern)
         {}
 
         /* prediction */
         bool isTaken() const
         {
-            return state & bp.mean_state;
+            return state_table[ current_pattern] & bp.mean_state;
         }
 
         addr_t target() const
@@ -98,7 +119,8 @@ private:
 public:
     BP( unsigned int   size_in_entries,
         unsigned int   ways,
-        unsigned short prediction_bits,
+        unsigned short prediction_bits = 2,
+        unsigned short prediction_level = 1,
         unsigned short branch_ip_size_in_bits = 32);
 
     addr_t getPC( addr_t PC);

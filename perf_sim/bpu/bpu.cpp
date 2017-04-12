@@ -7,19 +7,28 @@
 // MIPT-MIPS modules
  #include "bpu.h"
 
+void BP::BPEntry::reset()
+{
+    std::fill( state_table.begin(), state_table.end(), bp.default_state);
+    current_pattern = bp.default_pattern;
+}
 void BP::BPEntry::update( bool is_actually_taken, addr_t target)
 {
     /* TODO:
      * determine whether in case of target change we should
      * reset the state or update it according the actual direction
      */
-    if ( is_actually_taken && _target != target)
+
+     // For now the decision is just to update the target and reset information
+    if ( is_actually_taken && ( _target != target))
     {
-        state = bp.default_state;
+        reset();
         _target = target;
-        return;
     }
 
+    current_pattern = ( ( current_pattern << 1) & bp.pattern_mask) + ( is_actually_taken ? 1 : 0);
+
+    unsigned short& state = state_table[ current_pattern];
     state += ( is_actually_taken ? 1 : -1);
 
     /* Handy implemetation of saturation arithmetics. It's quite simple
@@ -35,10 +44,14 @@ void BP::BPEntry::update( bool is_actually_taken, addr_t target)
 BP::BP( unsigned int   size_in_entries,
         unsigned int   ways,
         unsigned short prediction_bits,
+        unsigned short prediction_level,
         unsigned short branch_ip_size_in_bits) :
     prediction_bits( prediction_bits),
-    mean_state( 1 << ( prediction_bits - 1)),
+    mean_state( 1ull << ( prediction_bits - 1)),
     default_state( mean_state - 1),
+    prediction_level( prediction_level),
+    default_pattern( 0),
+    pattern_mask( ( 1ull << prediction_level) - 1),
     set_mask( ( size_in_entries / ways ) - 1),
     data( ways, std::vector<BPEntry>( size_in_entries / ways, BPEntry( *this))),
     tags( size_in_entries,
