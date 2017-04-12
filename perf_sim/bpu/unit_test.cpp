@@ -12,9 +12,9 @@
 TEST( Initialization, WrongParameters)
 {
     // Check failing with wrong input values
-    ASSERT_EXIT( BP( 100, 20, 2));
-    ASSERT_EXIT( BP( 120, 20, 40));
-    ASSERT_EXIT( BP( 128, 14, 1));
+    ASSERT_EXIT( BP( 100, 20, 2),  ::testing::ExitedWithCode( EXIT_FAILURE), "*");
+    ASSERT_EXIT( BP( 120, 20, 40), ::testing::ExitedWithCode( EXIT_FAILURE), "*");
+    ASSERT_EXIT( BP( 128, 14, 1),  ::testing::ExitedWithCode( EXIT_FAILURE), "*");
 }
 
 TEST( HitAndMiss, Miss)
@@ -69,14 +69,15 @@ TEST( Overload, LRU)
     addr_t target = 48;
 
     // Trying to make it forget the PCconst
-    for ( int i = 0; i < 1000, i++)
+    for ( int i = 0; i < 1000; i++)
     {
         bp.update( false, i);
         if ( !( i % 50))
             bp.update( true, PCconst, target);
     }
 
-    ASSERT_EQ( bp.getPC( 4), 8);
+    addr_t PC = 4;
+    ASSERT_EQ( bp.getPC( PC), PC + 4);
     ASSERT_EQ( bp.getPC( PCconst), target);
 }
 

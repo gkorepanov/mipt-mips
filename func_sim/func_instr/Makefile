@@ -60,5 +60,5 @@ $(GTEST_LIB):
 
 
 clean:
-	@-rm -rf *.o *.d
-	@-rm -rf disasm unit_test
+	@-rm -f *.o *.d
+	@-rm -f disasm unit_test
