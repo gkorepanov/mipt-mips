@@ -14,10 +14,14 @@ vpath %.h $(TRUNK)/func_sim/
 vpath %.h $(TRUNK)/func_sim/elf_parser/
 vpath %.h $(TRUNK)/func_sim/func_instr/
 vpath %.h $(TRUNK)/func_sim/func_memory/
+vpath %.h $(TRUNK)/perf_sim/mem/
+vpath %.h $(TRUNK)/perf_sim/bpu/
 vpath %.cpp $(TRUNK)/func_sim/
 vpath %.cpp $(TRUNK)/func_sim/elf_parser/
 vpath %.cpp $(TRUNK)/func_sim/func_instr/
 vpath %.cpp $(TRUNK)/func_sim/func_memory/
+vpath %.cpp $(TRUNK)/perf_sim/mem/
+vpath %.cpp $(TRUNK)/perf_sim/bpu/
 
 # GoogleTest directories
 GTEST_DIR= $(TRUNK)/libs/googletest

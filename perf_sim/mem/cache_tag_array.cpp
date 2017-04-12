@@ -73,8 +73,8 @@ void CacheTagArray::write( uint64 addr, unsigned int* way)
     unsigned int set_num = getSetNum( addr);
     unsigned int way_num = lru->update( set_num); // get l.r.u. way
     if ( way != nullptr)
-        *way = i;
-        
+        *way = way_num;
+
     set[ way_num][ set_num].line = getTagNum( addr); // write it
     set[ way_num][ set_num].is_valid = true; // this set is valid now
 }

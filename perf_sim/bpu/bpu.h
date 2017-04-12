@@ -4,6 +4,9 @@
  * Copyright 2017 MIPT-MIPS
  */
 
+// C++ generic modules
+#include <vector>
+
 // MIPT_MIPS modules
 #include "perf_sim/mem/cache_tag_array.h"
 
@@ -31,7 +34,7 @@
 
 
 /* for the sake of semantics */
-typedef addr_t uint64;
+typedef uint64 addr_t;
 
 class BP {
 private:
@@ -55,17 +58,19 @@ private:
 
     class BPEntry {
     private:
+        BP& bp;
         unsigned short state;
         addr_t _target;
     public:
-        BPEntry() :
-            state( default_state)
+        BPEntry( BP& bp) :
+            bp( bp),
+            state( bp.default_state)
         {}
 
         /* prediction */
         bool isTaken() const
         {
-            return state & mean_state;
+            return state & bp.mean_state;
         }
 
         addr_t target() const
@@ -80,9 +85,11 @@ private:
 
 
 private:
-    CacheTagArray tags;
-    std::vector<std::vector<BPEntry>> data;
     addr_t set_mask;
+
+    std::vector<std::vector<BPEntry>> data;
+    CacheTagArray tags;
+
     inline unsigned int getSetNum( addr_t addr)
     {
         return addr & set_mask;
@@ -91,8 +98,9 @@ private:
 public:
     BP( unsigned int   size_in_entries,
         unsigned int   ways,
+        unsigned short prediction_bits,
         unsigned short branch_ip_size_in_bits = 32);
 
     addr_t getPC( addr_t PC);
-    void update( Direction actual, addr_t target, addr_t branch_ip);
+    void update( bool is_actually_taken, addr_t branch_ip, addr_t target = 0);
 };
