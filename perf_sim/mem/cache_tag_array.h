@@ -28,7 +28,7 @@ struct CacheSet
 /* Replacement algorithm modules (LRU). */
 struct LRUInfo
 {
-    /* 
+    /*
      * "lru" contains sequences of using for each set. Last number in set list
      * is the last using.
      */
@@ -81,7 +81,7 @@ class CacheTagArray : protected Log
         CacheSet** set; // array of tags
         LRUInfo* lru; // LRU algorithm module
 
-        /* Checks if it possiable to create cache. */
+        /* Checks if it possible to create cache. */
         void checkArgs( unsigned int size_in_bytes,
                         unsigned int ways,
                         unsigned short block_size_in_bytes,
