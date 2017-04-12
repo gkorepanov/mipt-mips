@@ -46,7 +46,7 @@ CacheTagArray::~CacheTagArray()
     delete lru;
 }
 
-bool CacheTagArray::read( uint64 addr)
+bool CacheTagArray::read( uint64 addr, unsigned int* way)
 {
     unsigned int set_num = getSetNum( addr);
     uint64 tag_num = getTagNum( addr);
@@ -57,6 +57,9 @@ bool CacheTagArray::read( uint64 addr)
             if ( set[ i][ set_num].is_valid) // check validaty
             {
                 lru->update( set_num, i); // update LRU info
+                if ( way != nullptr)
+                    *way = i;
+
                 return true; // hit
             }
             return false; // miss, dirty data (or empty)
@@ -65,10 +68,13 @@ bool CacheTagArray::read( uint64 addr)
     return false; // miss (no data)
 }
 
-void CacheTagArray::write( uint64 addr)
+void CacheTagArray::write( uint64 addr, unsigned int* way)
 {
     unsigned int set_num = getSetNum( addr);
     unsigned int way_num = lru->update( set_num); // get l.r.u. way
+    if ( way != nullptr)
+        *way = i;
+        
     set[ way_num][ set_num].line = getTagNum( addr); // write it
     set[ way_num][ set_num].is_valid = true; // this set is valid now
 }
