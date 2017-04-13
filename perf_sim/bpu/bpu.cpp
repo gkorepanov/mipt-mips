@@ -62,17 +62,24 @@ BP::BP( unsigned int   size_in_entries,
 {}
 
 
-addr_t BP::getPC( addr_t PC) {
+bool BP::predictTaken( addr_t PC)
+{
     unsigned int way;
     if ( tags.read( PC, &way)) // hit
-    {
-        BPEntry predict = data[ way][ getSetNum( PC)];
+        return data[ way][ set(PC)].isTaken();
 
-        if ( predict.isTaken())  // predicted taken
-            return predict.target();
-    }
+    return false;
+}
 
-    return PC + 4;
+addr_t BP::getTarget( addr_t PC)
+{
+    if ( predictTaken(PC) == 0)
+        serr << "getTarget is called after though prediction is NOT TAKEN." << critical;
+
+    unsigned int way;
+    tags.read( PC, &way);
+
+    return data[ way][ set(PC)].target();
 }
 
 
@@ -80,5 +87,5 @@ void BP::update( bool is_actually_taken, addr_t branch_ip, addr_t target)
 {
     unsigned int way;
     tags.write( branch_ip, &way);
-    data[ way][ getSetNum( branch_ip)].update( is_actually_taken, target);
+    data[ way][ set( branch_ip)].update( is_actually_taken, target);
 }

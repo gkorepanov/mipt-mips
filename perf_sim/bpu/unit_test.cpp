@@ -20,16 +20,19 @@ TEST( Initialization, WrongParameters)
 TEST( HitAndMiss, Miss)
 {
     BP bp( 128, 16, 2);
-    addr_t PC = 12;
 
     // Check default cache miss behaviour
-    ASSERT_EQ( bp.getPC( PC), PC + 4);
+    addr_t PC = 12;
+    ASSERT_EQ( bp.predictTaken(PC), 0);
+
     PC = 16;
-    ASSERT_EQ( bp.getPC( PC), PC + 4);
+    ASSERT_EQ( bp.predictTaken(PC), 0);
+
     PC = 20;
-    ASSERT_EQ( bp.getPC( PC), PC + 4);
+    ASSERT_EQ( bp.predictTaken(PC), 0);
+
     PC = 12;
-    ASSERT_EQ( bp.getPC( PC), PC + 4);
+    ASSERT_EQ( bp.predictTaken(PC), 0);
 }
 
 TEST( Main, PredictingBits)
@@ -40,44 +43,49 @@ TEST( Main, PredictingBits)
 
     // Teaching
     bp.update( true, PC, target);
-    ASSERT_EQ( bp.getPC( PC), target);
-    ASSERT_EQ( bp.getPC( PC), target);
+    ASSERT_EQ( bp.predictTaken(PC), 1);
+    ASSERT_EQ( bp.getTarget(PC), target);
+
     bp.update( true, PC, target);
-    ASSERT_EQ( bp.getPC( PC), target);
+    ASSERT_EQ( bp.predictTaken(PC), 1);
+    ASSERT_EQ( bp.getTarget(PC), target);
 
     // "Over" - teaching
     bp.update( true, PC, target);
-    ASSERT_EQ( bp.getPC( PC), target);
+    ASSERT_EQ( bp.predictTaken(PC), 1);
+    ASSERT_EQ( bp.getTarget(PC), target);
+
     bp.update( true, PC, target);
-    ASSERT_EQ( bp.getPC( PC), target);
+    ASSERT_EQ( bp.predictTaken(PC), 1);
+    ASSERT_EQ( bp.getTarget(PC), target);
 
     // "Un" - teaching
     bp.update( false, PC);
-    ASSERT_EQ( bp.getPC( PC), target);
+    ASSERT_EQ( bp.predictTaken(PC), 1);
+    ASSERT_EQ( bp.getTarget(PC), target);
 
     // Strong "un" - teaching
+    bp.update( false, PC);
+    bp.update( false, PC);
+    bp.update( false, PC);
+    ASSERT_EQ( bp.predictTaken(PC), 0);
 
     bp.update( false, PC);
-    bp.update( false, PC);
-    bp.update( false, PC);
-    ASSERT_EQ( bp.getPC( PC), PC + 4);
+    ASSERT_EQ( bp.predictTaken(PC), 0);
 
     bp.update( false, PC);
-    ASSERT_EQ( bp.getPC( PC), PC + 4);
+    ASSERT_EQ( bp.predictTaken(PC), 0);
 
     bp.update( false, PC);
-    ASSERT_EQ( bp.getPC( PC), PC + 4);
-
-    bp.update( false, PC);
-    ASSERT_EQ( bp.getPC( PC), PC + 4);
+    ASSERT_EQ( bp.predictTaken(PC), 0);
 
     // Teaching again
     bp.update( true, PC, target);
-    ASSERT_EQ( bp.getPC( PC), PC + 4);
+    ASSERT_EQ( bp.predictTaken(PC), 0);
 
     bp.update( true, PC, target);
-    ASSERT_EQ( bp.getPC( PC), target);
-
+    ASSERT_EQ( bp.predictTaken(PC), 1);
+    ASSERT_EQ( bp.getTarget(PC), target);
 }
 
 
@@ -95,9 +103,11 @@ TEST( Overload, LRU)
             bp.update( true, PCconst, target);
     }
 
+    // Checking some random PC and PCConst
     addr_t PC = 4;
-    ASSERT_EQ( bp.getPC( PC), PC + 4);
-    ASSERT_EQ( bp.getPC( PCconst), target);
+    ASSERT_EQ( bp.predictTaken(PC), 0);
+    ASSERT_EQ( bp.predictTaken(PCconst), 1);
+    ASSERT_EQ( bp.getTarget(PCconst), target);
 }
 
 
@@ -122,15 +132,19 @@ TEST( Multilevel, Level2)
     bp.update( false, PC);
 
     // Checking sequnce
-    ASSERT_EQ( bp.getPC( PC), target);
+    ASSERT_EQ( bp.predictTaken(PC), 1);
+    ASSERT_EQ( bp.getTarget(PC), target);
+
     bp.update( true, PC, target);
-    ASSERT_EQ( bp.getPC( PC), PC + 4);
+    ASSERT_EQ( bp.predictTaken(PC), 0);
+
 
     // Tricking it
     bp.update( true, PC, target);
 
     // 11 is not studied yet, thus should return NT
-    ASSERT_EQ( bp.getPC( PC), PC + 4);
+    ASSERT_EQ( bp.predictTaken(PC), 0);
+
 }
 
 

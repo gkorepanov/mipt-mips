@@ -113,7 +113,8 @@ private:
     std::vector<std::vector<BPEntry>> data;
     CacheTagArray tags;
 
-    inline unsigned int getSetNum( addr_t addr)
+    /* acquire set number from address */
+    inline unsigned int set( addr_t addr)
     {
         return addr & set_mask;
     }
@@ -125,6 +126,7 @@ public:
         unsigned short prediction_level = 0,
         unsigned short branch_ip_size_in_bits = 32);
 
-    addr_t getPC( addr_t PC);
+    bool predictTaken( addr_t PC);
+    addr_t getTarget( addr_t PC);
     void update( bool is_actually_taken, addr_t branch_ip, addr_t target = 0);
 };
