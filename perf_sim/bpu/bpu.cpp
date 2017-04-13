@@ -65,7 +65,7 @@ BP::BP( unsigned int   size_in_entries,
 bool BP::predictTaken( addr_t PC)
 {
     unsigned int way;
-    if ( tags.read( PC, &way)) // hit
+    if ( tags.read( PC, &way, false)) // hit
         return data[ way][ set(PC)].isTaken();
 
     return false;
@@ -77,7 +77,7 @@ addr_t BP::getTarget( addr_t PC)
         serr << "getTarget is called after though prediction is NOT TAKEN." << critical;
 
     unsigned int way;
-    tags.read( PC, &way);
+    tags.read( PC, &way, false);
 
     return data[ way][ set(PC)].target();
 }

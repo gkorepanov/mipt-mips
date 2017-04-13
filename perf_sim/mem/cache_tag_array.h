@@ -95,8 +95,10 @@ class CacheTagArray : protected Log
                        unsigned short block_size_in_bytes = 4,
                        unsigned short addr_size_in_bits = 32);
         ~CacheTagArray();
-        bool read( uint64 addr, unsigned int* way = nullptr); // find in the cache
-        void write( uint64 addr, unsigned int* way = nullptr); // add to the cache
+        /* find in cache and return way number if hit */
+        bool read( uint64 addr, unsigned int* way = nullptr, bool do_update = true);
+        /* write to cache, if already present, just update LRU info */
+        void write( uint64 addr, unsigned int* way = nullptr);
 };
 
 #endif // #ifndef CACHE_TAG_ARRAY_H

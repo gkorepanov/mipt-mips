@@ -46,7 +46,7 @@ CacheTagArray::~CacheTagArray()
     delete lru;
 }
 
-bool CacheTagArray::read( uint64 addr, unsigned int* way)
+bool CacheTagArray::read( uint64 addr, unsigned int* way, bool do_update)
 {
     unsigned int set_num = getSetNum( addr);
     uint64 tag_num = getTagNum( addr);
@@ -56,7 +56,9 @@ bool CacheTagArray::read( uint64 addr, unsigned int* way)
         {
             if ( set[ i][ set_num].is_valid) // check validaty
             {
-                lru->update( set_num, i); // update LRU info
+                if ( do_update)
+                    lru->update( set_num, i); // update LRU info
+                    
                 if ( way != nullptr)
                     *way = i;
 
