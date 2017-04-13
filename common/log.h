@@ -11,6 +11,11 @@
 #include <iostream>
 #include <ostream>
 
+
+#define RED          "\033[31m"
+#define GREEN        "\033[32m"
+#define DCOLOR       "\033[39m"
+
 class LogOstream
 {
     const bool enable;
@@ -47,8 +52,13 @@ public:
     LogOstream sout;
     LogOstream serr;
     LogOstream::Critical critical;
+    std::string separator;
 
-    Log(bool value) : sout(value, std::cout), serr(true, std::cerr) { }
+    Log( bool value) :
+        sout( value, std::cout),
+        serr( true, std::cerr),
+        separator( std::string( "\n") + std::string( 80, '*') + std::string( "\n"))
+    {}
 };
 
 

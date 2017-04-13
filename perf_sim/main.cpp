@@ -25,8 +25,8 @@ int main( int argc, char** argv)
     /* running simulation */
     if ( !handler.functional_only)
     {
-        PerfMIPS p_mips( handler.disassembly_on);
-        p_mips.run( handler.binary_filename, handler.num_steps);
+        PerfMIPS p_mips( handler);
+        p_mips.run();
     }
     else
     {

@@ -234,6 +234,15 @@ class FuncInstr
                                      operation == OUT_R_JUMP      ||
                                      operation == OUT_R_JUMP_LINK ||
                                      operation == OUT_I_BRANCH; }
+        /* Checks whether the branch was taken */
+        bool jumpExecuted()
+        {
+            if ( isJump() && (new_PC != PC + 4))
+                return true;
+
+            return false;
+        }
+
         bool is_load()  const { return operation == OUT_I_LOAD || operation == OUT_I_LOADU; }
         bool is_store() const { return operation == OUT_I_STORE; }
 

@@ -1,228 +1,61 @@
-#include <iostream>
+/*
+ * perf_sim.cpp - mips performance simulator
+ * Copyright 2017 MIPT-MIPS
+ */
 
+// MIPT-MIPS modules
 #include "perf_sim.h"
 
-static const uint32 PORT_LATENCY = 1;
-static const uint32 PORT_FANOUT = 1;
-static const uint32 PORT_BW = 1;
-
-PerfMIPS::PerfMIPS(bool log) : Log(log)
+//##############################################################################
+//#                                SIMULATOR                                   #
+//##############################################################################
+PerfMIPS::PerfMIPS( Config& handler) :
+    Log( handler.disassembly_on),
+    instrs_to_run( handler.num_steps),
+    /* latches initialisation */
+    if_id( *this),
+    id_ex( *this),
+    ex_mem( *this),
+    mem_wb( *this),
+    /* stages naming and connection */
+    fetch_stage    ( *this, "fetch   ", handler.disassembly_on, nullptr, &if_id  ),
+    decode_stage   ( *this, "decode  ", handler.disassembly_on, &if_id,  &id_ex  ),
+    execute_stage  ( *this, "execute ", handler.disassembly_on, &id_ex,  &ex_mem ),
+    memory_stage   ( *this, "memory  ", handler.disassembly_on, &ex_mem, &mem_wb ),
+    writeback_stage( *this, "wb      ", handler.disassembly_on, &mem_wb, nullptr),
+    /* units initialisation */
+    memory( handler.binary_filename),
+    bp ( handler.btb_size, handler.btb_ways),
+    /* define program counter */
+    PC ( memory.startPC())
 {
-    executed_instrs = 0;
+    checker.init( handler.binary_filename);
 
-    wp_fetch_2_decode = make_write_port<uint32>("FETCH_2_DECODE", PORT_BW, PORT_FANOUT);
-    rp_fetch_2_decode = make_read_port<uint32>("FETCH_2_DECODE", PORT_LATENCY);
-    wp_decode_2_fetch_stall = make_write_port<bool>("DECODE_2_FETCH_STALL", PORT_BW, PORT_FANOUT);
-    rp_decode_2_fetch_stall = make_read_port<bool>("DECODE_2_FETCH_STALL", PORT_LATENCY);
-
-    wp_decode_2_execute = make_write_port<FuncInstr>("DECODE_2_EXECUTE", PORT_BW, PORT_FANOUT);
-    rp_decode_2_execute = make_read_port<FuncInstr>("DECODE_2_EXECUTE", PORT_LATENCY);
-    wp_execute_2_decode_stall = make_write_port<bool>("EXECUTE_2_DECODE_STALL", PORT_BW, PORT_FANOUT);
-    rp_execute_2_decode_stall = make_read_port<bool>("EXECUTE_2_DECODE_STALL", PORT_LATENCY);
-
-    wp_execute_2_memory = make_write_port<FuncInstr>("EXECUTE_2_MEMORY", PORT_BW, PORT_FANOUT);
-    rp_execute_2_memory = make_read_port<FuncInstr>("EXECUTE_2_MEMORY", PORT_LATENCY);
-    wp_memory_2_execute_stall = make_write_port<bool>("MEMORY_2_EXECUTE_STALL", PORT_BW, PORT_FANOUT);
-    rp_memory_2_execute_stall = make_read_port<bool>("MEMORY_2_EXECUTE_STALL", PORT_LATENCY);
-
-    wp_memory_2_writeback = make_write_port<FuncInstr>("MEMORY_2_WRITEBACK", PORT_BW, PORT_FANOUT);
-    rp_memory_2_writeback = make_read_port<FuncInstr>("MEMORY_2_WRITEBACK", PORT_LATENCY);
-    wp_writeback_2_memory_stall = make_write_port<bool>("WRITEBACK_2_MEMORY_STALL", PORT_BW, PORT_FANOUT);
-    rp_writeback_2_memory_stall = make_read_port<bool>("WRITEBACK_2_MEMORY_STALL", PORT_LATENCY);
-
-    Port<uint32>::init();
+    /* init ports of all types */
+    Port<IfId::Data>::init();
+    Port<IdEx::Data>::init();
     Port<FuncInstr>::init();
     Port<bool>::init();
 }
 
-void PerfMIPS::run( const std::string& tr, uint32 instrs_to_run)
-{
-    int cycle = 0;
-
-    decode_next_time = false;
-
-    mem = new FuncMemory( tr.c_str());
-    checker.init( tr);
-
-    PC = mem->startPC();
-    PC_is_valid = true;
-
-    while (executed_instrs < instrs_to_run)
+void PerfMIPS::run() {
+    while ( executed_instrs < instrs_to_run)
     {
-        clock_writeback( cycle);
-        clock_decode( cycle);
-        clock_fetch( cycle);
-        clock_execute( cycle);
-        clock_memory( cycle);
-        ++cycle;
+        fetch_stage.clock();
+        decode_stage.clock();
+        execute_stage.clock();
+        memory_stage.clock();
+        writeback_stage.clock();
 
+        ++cycle;
         if ( cycle - last_writeback_cycle >= 1000)
             serr << "Deadlock was detected. The process will be aborted.\n\n" << critical;
+
         sout << "Executed instructions: " << executed_instrs << std::endl << std::endl;
     }
 
-    auto ipc = (double)executed_instrs / cycle;
-
-    std::cout << std::endl << "****************************"
-              << std::endl << "IPC: " << ipc
-              << std::endl << "****************************"
-              << std::endl;
-
-    delete mem;
-}
-
-void PerfMIPS::clock_fetch( int cycle) {
-    sout << "fetch   cycle " << std::dec << cycle << ":";
-
-    bool is_stall = false;
-    rp_decode_2_fetch_stall->read( &is_stall, cycle);
-    if ( is_stall)
-    {
-        sout << "bubble\n";
-        return;
-    }
-
-    if (PC_is_valid)
-    {
-        uint32 module_data = mem->read(PC);
-        wp_fetch_2_decode->write( module_data, cycle);
-
-        sout << std::hex << "0x" << module_data << std::endl;
-    }
-    else
-    {
-        sout << "bubble\n";
-    }
-}
-
-void PerfMIPS::clock_decode( int cycle) {
-    sout << "decode  cycle " << std::dec << cycle << ":";
-
-    bool is_stall = false;
-    rp_execute_2_decode_stall->read( &is_stall, cycle);
-    if ( is_stall) {
-        wp_decode_2_fetch_stall->write( true, cycle);
-
-        sout << "bubble\n";
-        return;
-    }
-
-    bool is_anything_from_fetch = rp_fetch_2_decode->read( &decode_data, cycle);
-
-    FuncInstr instr( decode_data, PC);
-
-    if ( instr.isJump() && is_anything_from_fetch)
-        PC_is_valid = false;
-
-    if ( !is_anything_from_fetch && !decode_next_time)
-    {
-        sout << "bubble\n";
-        return;
-    }
-
-    if ( rf.check( instr.get_src1_num()) &&
-         rf.check( instr.get_src2_num()) &&
-         rf.check( instr.get_dst_num()))
-    {
-        rf.read_src1( instr);
-        rf.read_src2( instr);
-        rf.invalidate( instr.get_dst_num());
-        wp_decode_2_execute->write( instr, cycle);
-
-        decode_next_time = false;
-
-        if (!instr.isJump())
-            PC += 4;
-
-        sout << instr << std::endl;
-    }
-    else
-    {
-        wp_decode_2_fetch_stall->write( true, cycle);
-        decode_next_time = true;
-        sout << "bubble\n";
-    }
-}
-
-void PerfMIPS::clock_execute( int cycle)
-{
-    std::ostringstream oss;
-    sout << "execute cycle " << std::dec << cycle << ":";
-
-    bool is_stall = false;
-    rp_memory_2_execute_stall->read( &is_stall, cycle);
-    if ( is_stall)
-    {
-        wp_execute_2_decode_stall->write( true, cycle);
-
-        sout << "bubble\n";
-        return;
-    }
-
-    FuncInstr instr;
-    if ( !rp_decode_2_execute->read( &instr, cycle))
-    {
-        sout << "bubble\n";
-        return;
-    }
-
-    instr.execute();
-    wp_execute_2_memory->write( instr, cycle);
-
-    sout << instr << std::endl;
-}
-
-void PerfMIPS::clock_memory( int cycle)
-{
-    sout << "memory  cycle " << std::dec << cycle << ":";
-
-    bool is_stall = false;
-    rp_writeback_2_memory_stall->read( &is_stall, cycle);
-    if ( is_stall)
-    {
-        wp_memory_2_execute_stall->write( true, cycle);
-        sout << "bubble\n";
-        return;
-    }
-
-    FuncInstr instr;
-    if ( !rp_execute_2_memory->read( &instr, cycle))
-    {
-        sout << "bubble\n";
-        return;
-    }
-
-    load_store(instr);
-    wp_memory_2_writeback->write( instr, cycle);
-
-    sout << instr << std::endl;
-}
-
-void PerfMIPS::clock_writeback( int cycle)
-{
-    sout << "wb      cycle " << std::dec << cycle << ":";
-
-    FuncInstr instr;
-    if ( !rp_memory_2_writeback->read( &instr, cycle))
-    {
-        sout << "bubble\n";
-        return;
-    }
-
-    if ( instr.isJump())
-    {
-        PC_is_valid = true;
-        PC = instr.get_new_PC();
-    }
-
-    rf.write_dst( instr);
-
-    sout << instr << std::endl;
-
-    check(instr);
-
-    ++executed_instrs;
-    last_writeback_cycle = cycle;
+    auto ipc = ( (double) executed_instrs) / cycle;
+    sout << separator << "IPC: " << ipc << separator << std::endl;
 }
 
 void PerfMIPS::check( const FuncInstr& instr)
@@ -245,6 +78,178 @@ void PerfMIPS::check( const FuncInstr& instr)
     }
 }
 
-PerfMIPS::~PerfMIPS() {
 
+
+//##############################################################################
+//#                                  STAGES                                    #
+//##############################################################################
+void PerfMIPS::InstructionFetch::operate()
+{
+    /* creating strcuture to be sent to decode stage */
+    IfId::Data data;
+
+    /* fetching instruction */
+    data.raw = sim.memory.read(sim.PC);
+
+    /* saving predcitions and updating PC according to them */
+    data.PC = sim.PC;
+    if ( sim.bp.predictTaken( sim.PC))
+    {
+        data.predicted_taken = true;
+        data.predicted_target = sim.bp.getTarget( sim.PC);
+    }
+    else
+    {
+        data.predicted_taken = false;
+        data.predicted_target = sim.PC + 4;
+    }
+        /* updating PC according to prediction */
+        sim.PC = data.predicted_target;
+
+    /* sending to decode */
+    sim.if_id.write_data_port->write( data, sim.cycle);
+
+    /* log */
+    sout << GREEN << std::hex << "0x" << data.raw << DCOLOR << std::endl;
+}
+
+
+void PerfMIPS::InstructionDecode::operate()
+{
+    /* TODO: remove this comment */
+    // Port<IfId::Data>::lost( sim.cycle);
+
+    if ( !is_anything_to_decode)
+        /* acquiring data from fetch */
+        is_anything_to_decode = sim.if_id.read_data_port->read( &data, sim.cycle);
+
+    /* TODO: remove this comment */
+    //sout << "instr: " << std::hex << data.raw;
+
+    if ( !is_anything_to_decode)
+    {
+        sout << RED << "bubble\n" << DCOLOR;
+        return;
+    }
+
+    FuncInstr instr( data.raw, data.PC);
+
+    /* TODO: replace all this code by introducing Forwarding unit */
+    if ( sim.rf.check( instr.get_src1_num()) &&
+         sim.rf.check( instr.get_src2_num()) &&
+         sim.rf.check( instr.get_dst_num())) // no data hazard
+    {
+        sim.rf.read_src1( instr);
+        sim.rf.read_src2( instr);
+        sim.rf.invalidate( instr.get_dst_num());
+
+        IdEx::Data data_to_send;
+        data_to_send.instr = instr;
+        data_to_send.predicted_target = data.predicted_target;
+        data_to_send.target_not_taken = data.PC + 4;
+        data_to_send.predicted_taken  = data.predicted_taken;
+
+        is_anything_to_decode = 0; // successfully decoded
+
+        sim.id_ex.write_data_port->write( data_to_send, sim.cycle);
+
+        /* log */
+        sout << GREEN << instr << DCOLOR << std::endl;
+    } else // data hazard, stalling pipeline
+    {
+        sendStall();
+        sout << RED << "bubble (data hazard)\n" << DCOLOR;
+    }
+}
+
+void PerfMIPS::Execute::operate()
+{
+    IdEx::Data data;
+    if ( !sim.id_ex.read_data_port->read( &data, sim.cycle))
+    {
+        sout << RED << "bubble\n" << DCOLOR;
+        return;
+    }
+
+    data.instr.execute();
+
+    sim.ex_mem.write_data_port->write( data, sim.cycle);
+
+    sout << GREEN << data.instr << DCOLOR << std::endl;
+}
+
+
+void PerfMIPS::MemoryAccess::operate()
+{
+    ExMem::Data data;
+    if ( !sim.ex_mem.read_data_port->read( &data, sim.cycle))
+    {
+        sout << RED << "bubble\n" << DCOLOR;
+        return;
+    }
+
+    /* acquiring real information */
+    bool actually_taken = data.instr.isJump() && data.instr.jumpExecuted();
+    addr_t real_target = data.instr.get_new_PC();
+
+    /* updating BTB */
+    sim.bp.update( actually_taken, data.target_not_taken - 4, real_target);
+
+    /* branch misprediction unit */
+    if ( (actually_taken != data.predicted_taken) ||
+         ( (actually_taken == data.predicted_taken) &&
+           (real_target    != data.predicted_target)))
+    {
+        /* flushing the pipeline */
+
+        /* flushing data ports */
+        sim.if_id.read_data_port->flush();
+        sim.id_ex.read_data_port->flush();
+        sim.ex_mem.read_data_port->flush();
+
+        /* flushing stall ports */
+        sim.if_id.read_stall_port->flush();
+        sim.id_ex.read_stall_port->flush();
+        sim.ex_mem.read_stall_port->flush();
+        sim.mem_wb.read_stall_port->flush();
+
+        /* updating the PC with actual value */
+        sim.PC = real_target;
+
+        /* delete internal data from stages if there was some */
+        sim.decode_stage.flushData();
+
+        sout << RED << "misprediction\n" << DCOLOR;
+        return;
+    }
+
+    FuncInstr& instr = data.instr;
+    /* load/store */
+    if ( instr.is_load())
+        instr.set_v_dst( sim.memory.read( instr.get_mem_addr(), instr.get_mem_size()));
+    else if ( instr.is_store())
+        sim.memory.write( instr.get_v_src2(), instr.get_mem_addr(), instr.get_mem_size());
+
+    sim.mem_wb.write_data_port->write( data.instr, sim.cycle);
+
+    sout << GREEN << instr << DCOLOR << std::endl;
+}
+
+void PerfMIPS::Writeback::operate()
+{
+    FuncInstr instr;
+    if ( !sim.mem_wb.read_data_port->read( &instr, sim.cycle))
+    {
+        sout << RED << "bubble\n" << DCOLOR;
+        return;
+    }
+
+    sim.rf.write_dst( instr);
+
+    sout << GREEN << instr << DCOLOR << std::endl;
+
+    sim.check( instr);
+
+    ++sim.executed_instrs;
+    sim.last_writeback_cycle = sim.cycle;
 }

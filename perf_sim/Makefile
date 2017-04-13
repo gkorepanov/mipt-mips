@@ -11,10 +11,13 @@ TRUNK= ..
 # Including options and compiler flags
 include $(TRUNK)/options.mk
 
+# Clang
+CXXFLAGS += -Wno-unused-private-field
+
 #
 # Enter for build "perf_sim" program
 #
-OBJS= elf_parser.o func_memory.o func_instr.o perf_sim.o func_sim.o config.o main.o
+OBJS= elf_parser.o func_memory.o func_instr.o perf_sim.o func_sim.o config.o main.o bpu.o cache_tag_array.o
 DEPS= $(OBJS:.o=.d)
 
 mipt-mips: $(OBJS)
@@ -35,6 +38,15 @@ config.o: config.cpp
 	@$(CXX) $(CXXFLAGS) -c $< $(INCL)
 	@$(CXX) $(CXXFLAGS) -MM -o $(patsubst %.o, %.d, $@) $< $(INCL)
 
+
+
+OBJS= portstest.o
+DEPS= $(OBJS:.o=.d)
+
+portstest: $(OBJS)
+	$(CXX) -o $@ $^
+	@echo "---------------------------------"
+	@echo "$@ is built SUCCESSFULLY"
 #
 # Enter to remove all created files
 #

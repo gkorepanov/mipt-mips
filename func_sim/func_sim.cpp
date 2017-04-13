@@ -41,7 +41,7 @@ void MIPS::step( std::ostream& out)
 void MIPS::init( const std::string& tr)
 {
     assert( mem == nullptr);
-    mem = new FuncMemory(tr.c_str());
+    mem = new FuncMemory( tr);
     PC = mem->startPC();
 }
 
@@ -52,4 +52,3 @@ void MIPS::run(const std::string& tr, uint32 instrs_to_run)
         step( std::cout);
     }
 }
-

@@ -6,7 +6,11 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+// Generic C++ modules
 #include <string>
+
+// MIPT-MIPS modules
+#include "common/types.h"
 
 class Config
 {
@@ -21,8 +25,10 @@ class Config
 public:
     /* variables */
     Value<std::string> binary_filename;
-    Value<int>         num_steps;
-    Value<bool>        disassembly_on;
+    Value<cycles_t>          num_steps;
+    Value<unsigned int>       btb_size;
+    Value<unsigned int>       btb_ways;
+    Value<bool>         disassembly_on;
     Value<bool>        functional_only;
 
     /* constructors */

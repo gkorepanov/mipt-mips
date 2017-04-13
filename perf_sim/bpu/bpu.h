@@ -10,6 +10,7 @@
 // MIPT_MIPS modules
 #include "perf_sim/mem/cache_tag_array.h"
 #include "common/log.h"
+#include "common/types.h"
 
 /* The branch prediction unit keeps the fixed amount of entries.
  * Entry contains the information regarding the certain branch ip:
@@ -32,10 +33,6 @@
  * memory byte"), and the size in bytes equals to that of in entries.
  */
 
-
-
-/* for the sake of semantics */
-typedef uint64 addr_t;
 
 class BP : protected Log {
 private:

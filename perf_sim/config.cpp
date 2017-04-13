@@ -35,11 +35,17 @@ int Config::handleArgs( int argc, char** argv)
         ( "binary,b",      po::value<std::string>( this->binary_filename.get_ptr())->required(),
           "input binary file")
 
-        ( "numsteps,n",    po::value<int>( this->num_steps.get_ptr())->required(),
+        ( "numsteps,n",    po::value<cycles_t>( this->num_steps.get_ptr())->required(),
           "number of instructions to run")
 
+        ( "btb-size,s",      po::value<unsigned int>( this->btb_size.get_ptr())->default_value( 128),
+          "size of BTB cache in entries")
+
+        ( "btb-ways,w",      po::value<unsigned int>( this->btb_ways.get_ptr())->default_value( 4),
+          "number of ways in BTB cache (defines associativity)")
+
         /* by default, the silent mode is on */
-        ( "disassembly,d", po::bool_switch( this->disassembly_on.get_ptr())->default_value( false),
+        ( "disassembly,d",     po::bool_switch( this->disassembly_on.get_ptr())->default_value( false),
           "print disassembly")
 
         /* by default, functional simulator is run */
