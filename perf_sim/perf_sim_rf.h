@@ -59,6 +59,12 @@ class RF
                 array[(size_t)num].is_valid = false;
         }
 
+        void validate( RegNum num)
+        {
+            if ( num != REG_NUM_ZERO)
+                array[(size_t)num].is_valid = true;
+        }
+
         bool check( RegNum num) const
         {
             return array[(size_t)num].is_valid;

@@ -135,12 +135,12 @@ class FuncInstr
         static const char *regTableName(RegNum);
         static const char *regTable[];
 
-	RegNum src1;
+        RegNum src1;
         RegNum src2;
         RegNum dst;
 
         uint32 v_imm;
-	uint32 v_src1;
+        uint32 v_src1;
         uint32 v_src2;
         uint32 v_dst;
         uint32 mem_addr;
@@ -148,10 +148,17 @@ class FuncInstr
 
         bool complete;
 
+        /* the adress of instruction */
         uint32 PC; // removing "const" keyword to supporting ports
+        /* the target adress, if there is no jump, new_PC = PC + 4 after execution */
         uint32 new_PC;
 
         std::string disasm;
+
+        /* info for branch misprediction unit */
+        bool predicted_taken;    // Predicted direction
+        addr_t predicted_target; // PC, predicted by BPU
+        addr_t target_not_taken; // PC which would be present if target was not taken
 
         void initFormat();
         void initR();
@@ -221,7 +228,10 @@ class FuncInstr
         uint32 lo = NO_VAL32;
 
         FuncInstr() {} // constructor w/o arguments for ports
-        FuncInstr( uint32 bytes, uint32 PC = 0);
+        FuncInstr( uint32 bytes, addr_t PC = 0,
+                   bool predicted_taken = 0,
+                   addr_t predicted_target = 0);
+
         std::string Dump( std::string indent = " ") const;
 
         RegNum get_src1_num() const { return src1; }
@@ -234,12 +244,24 @@ class FuncInstr
                                      operation == OUT_R_JUMP      ||
                                      operation == OUT_R_JUMP_LINK ||
                                      operation == OUT_I_BRANCH; }
-        /* Checks whether the branch was taken */
+        /* Checks whether the jump was executed */
         bool jumpExecuted()
         {
             if ( isJump() && (new_PC != PC + 4))
                 return true;
 
+            return false;
+        }
+
+        /* checks whether BPU prediction was wrong */
+        bool misprediction()
+        {
+            if ( predicted_taken != jumpExecuted())
+                return true;
+
+            if (predicted_target != new_PC)
+                return true;
+            
             return false;
         }
 
@@ -253,6 +275,7 @@ class FuncInstr
 
         uint32 get_mem_addr() const { return mem_addr; }
         uint32 get_mem_size() const { return mem_size; }
+        uint32 get_PC() const { return PC; }
         uint32 get_new_PC() const { return new_PC; }
 
         void set_v_dst(uint32 value)  { v_dst  = value; } // for loads

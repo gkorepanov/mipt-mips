@@ -223,9 +223,6 @@ template<class T> class ReadPort: public Port<T>, private Log
 
         // Tests if there is any ungot data
         bool selfTest( uint64, uint64*) const;
-
-        // clears the queue
-        void flush();
 };
 
 /*
@@ -304,11 +301,6 @@ template<class T> bool ReadPort<T>::selfTest(uint64 cycle, uint64* wantedCycle) 
     return true;
 }
 
-template<class T> void ReadPort<T>::flush()
-{
-    /* not beautiful, but the fastest way to flush std::queue */
-    DataQueue().swap(_dataQueue);
-}
 
 /*
  * Map of ports
