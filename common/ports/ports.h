@@ -53,7 +53,7 @@ class BasePort : protected Log
 
         // Init flag
         bool _init = false;
-   
+
         // Constructor of port
         BasePort( const std::string& key) : Log( true), _key( key) { }
 
